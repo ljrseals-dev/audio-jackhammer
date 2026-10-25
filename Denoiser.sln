@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denoiser.Core", "Denoiser.Core\Denoiser.Core.csproj", "{AB0A8F99-0B9F-40D0-A92B-F347CAF0681E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denoiser.Codecs", "Denoiser.Codecs\Denoiser.Codecs.csproj", "{87CA5BF8-BCDB-4094-8E03-51A035189907}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denoiser.Models", "Denoiser.Models\Denoiser.Models.csproj", "{82DDD7BC-7692-4AF3-85AF-CFA7E6F3F918}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denoiser.Cli", "Denoiser.Cli\Denoiser.Cli.csproj", "{22B75DF0-CEAF-4C0A-9FE3-291C0D4892D7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Denoiser.Tests", "Denoiser.Tests\Denoiser.Tests.csproj", "{B8AC229D-D6AD-448F-A189-EBDEB24DE845}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB0A8F99-0B9F-40D0-A92B-F347CAF0681E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB0A8F99-0B9F-40D0-A92B-F347CAF0681E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB0A8F99-0B9F-40D0-A92B-F347CAF0681E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB0A8F99-0B9F-40D0-A92B-F347CAF0681E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87CA5BF8-BCDB-4094-8E03-51A035189907}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87CA5BF8-BCDB-4094-8E03-51A035189907}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87CA5BF8-BCDB-4094-8E03-51A035189907}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87CA5BF8-BCDB-4094-8E03-51A035189907}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82DDD7BC-7692-4AF3-85AF-CFA7E6F3F918}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82DDD7BC-7692-4AF3-85AF-CFA7E6F3F918}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82DDD7BC-7692-4AF3-85AF-CFA7E6F3F918}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82DDD7BC-7692-4AF3-85AF-CFA7E6F3F918}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22B75DF0-CEAF-4C0A-9FE3-291C0D4892D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22B75DF0-CEAF-4C0A-9FE3-291C0D4892D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22B75DF0-CEAF-4C0A-9FE3-291C0D4892D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22B75DF0-CEAF-4C0A-9FE3-291C0D4892D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8AC229D-D6AD-448F-A189-EBDEB24DE845}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8AC229D-D6AD-448F-A189-EBDEB24DE845}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8AC229D-D6AD-448F-A189-EBDEB24DE845}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8AC229D-D6AD-448F-A189-EBDEB24DE845}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
