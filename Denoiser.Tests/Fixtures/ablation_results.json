@@ -1,0 +1,17 @@
+{
+  "status": "pending",
+  "note": "Do not fabricate numbers. Run with real weights:",
+  "command": "STRICT_SKIPS=1 dotnet test --filter FullyQualifiedName~DeepFilterAblation --logger console;verbosity=detailed",
+  "results": {
+    "mask_only_corr": null,
+    "mask_df_corr": null,
+    "full_corr": null
+  },
+  "published_reference": {
+    "source": "soniqo/DeepFilterNet3-ONNX acceptance (speech + white noise)",
+    "mask_only_corr": 0.9231,
+    "mask_df_corr": 0.9533,
+    "full_corr": 0.9697,
+    "note": "Ordering is the gate; exact match not required on construction fixture"
+  }
+}

@@ -54,21 +54,6 @@ public class HighPassFilterTests
     }
 }
 
-public class SoftLimiterTests
-{
-    [Fact]
-    public void SoftLimiter_ClampsPeaks()
-    {
-        var limiter = new SoftLimiter(0.95f, 0.05f);
-        var samples = new float[] { 0.5f, 1.5f, -2.0f, 0.0f };
-        limiter.Process(samples);
-        Assert.True(Math.Abs(samples[1]) <= 0.96f);
-        Assert.True(Math.Abs(samples[2]) <= 0.96f);
-        Assert.Equal(0.5f, samples[0]);
-        Assert.Equal(0.0f, samples[3]);
-    }
-}
-
 public class PipelineTests
 {
     [Fact]

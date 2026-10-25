@@ -25,6 +25,11 @@
     <ProjectReference Include="..\Denoiser.Core\Denoiser.Core.csproj" />
     <ProjectReference Include="..\Denoiser.Codecs\Denoiser.Codecs.csproj" />
     <ProjectReference Include="..\Denoiser.Models\Denoiser.Models.csproj" />
+    <ProjectReference Include="..\Denoiser.Realtime\Denoiser.Realtime.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" Link="Fixtures\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>
+

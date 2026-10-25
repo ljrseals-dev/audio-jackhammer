@@ -3,9 +3,18 @@ namespace Denoiser.Core;
 /// <summary>
 /// Rough RMS-based SNR estimate per block.
 /// Construction noise swings wildly; this provides visibility for logging.
+/// Supports both static one-shot estimates and an instance that tracks LastDb.
 /// </summary>
-public static class SnrEstimator
+public sealed class SnrEstimator
 {
+    public float LastDb { get; private set; }
+
+    /// <summary>Observe a block and update <see cref="LastDb"/>.</summary>
+    public void Observe(ReadOnlySpan<float> samples)
+    {
+        LastDb = EstimateDb(samples);
+    }
+
     /// <summary>
     /// Estimates SNR in dB assuming the "noise floor" is the quieter portion
     /// of the block (bottom 20% of frame RMS windows) versus overall RMS.
@@ -36,7 +45,6 @@ public static class SnrEstimator
 
         float overallRms = (float)Math.Sqrt(totalEnergy / samples.Length);
 
-        // Sort a copy to find noise-floor estimate (20th percentile)
         float[] sorted = rms.ToArray();
         Array.Sort(sorted);
         float noiseFloor = sorted[Math.Max(0, sorted.Length / 5)];

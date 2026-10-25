@@ -2,6 +2,7 @@ using System.CommandLine;
 using Denoiser.Codecs;
 using Denoiser.Core;
 using Denoiser.Models;
+using Denoiser.Realtime;
 using Microsoft.Extensions.Logging;
 
 namespace Denoiser.Cli;
@@ -52,10 +53,56 @@ static class Program
             getDefaultValue: () => "info",
             description: "Log level: info | debug");
 
+        var olaOption = new Option<string>(
+            aliases: new[] { "--ola" },
+            getDefaultValue: () => "auto",
+            description: "Overlap-add: auto | on | off (default auto — on iff model requires it).");
+
+        var lookAheadOption = new Option<bool>(
+            aliases: new[] { "--lookahead" },
+            getDefaultValue: () => false,
+            description: "Enable look-ahead limiter (default off).");
+
+        var snrCsvOption = new Option<string?>(
+            aliases: new[] { "--snr-csv" },
+            description: "Write per-block SNR estimates to this CSV path.");
+
+        var dfnModeOption = new Option<string>(
+            aliases: new[] { "--dfn-mode" },
+            getDefaultValue: () => "full",
+            description: "DeepFilterNet mode: full | mask-only (mask-only is diagnostic only).");
+
+        var captureDeviceOption = new Option<int>(
+            aliases: new[] { "--capture-device" },
+            getDefaultValue: () => 0,
+            description: "WASAPI capture device index (realtime mode).");
+
+        var renderDeviceOption = new Option<int>(
+            aliases: new[] { "--render-device" },
+            getDefaultValue: () => 0,
+            description: "WASAPI render device index (realtime mode).");
+
+        var captureBufferOption = new Option<int>(
+            aliases: new[] { "--capture-buffer-ms" },
+            getDefaultValue: () => 10,
+            description: "Capture buffer milliseconds (realtime).");
+
+        var renderBufferOption = new Option<int>(
+            aliases: new[] { "--render-buffer-ms" },
+            getDefaultValue: () => 10,
+            description: "Render buffer milliseconds (realtime).");
+
+        var durationOption = new Option<int>(
+            aliases: new[] { "--duration" },
+            getDefaultValue: () => 0,
+            description: "Realtime duration seconds (0 = until Ctrl+C).");
+
         var root = new RootCommand("Environmental Denoiser for Construction-Site Audio")
         {
             inputOption, outputOption, modelOption, modeOption,
-            highPassOption, formatOption, deviceOption, modelPathOption, logLevelOption
+            highPassOption, formatOption, deviceOption, modelPathOption, logLevelOption,
+            olaOption, lookAheadOption, snrCsvOption, dfnModeOption,
+            captureDeviceOption, renderDeviceOption, captureBufferOption, renderBufferOption, durationOption
         };
 
         root.SetHandler((context) =>
@@ -69,8 +116,19 @@ static class Program
             var device = context.ParseResult.GetValueForOption(deviceOption);
             var modelPath = context.ParseResult.GetValueForOption(modelPathOption);
             var logLevel = context.ParseResult.GetValueForOption(logLevelOption)!;
+            var ola = context.ParseResult.GetValueForOption(olaOption)!;
+            var lookAhead = context.ParseResult.GetValueForOption(lookAheadOption);
+            var snrCsv = context.ParseResult.GetValueForOption(snrCsvOption);
+            var dfnMode = context.ParseResult.GetValueForOption(dfnModeOption)!;
+            var captureDev = context.ParseResult.GetValueForOption(captureDeviceOption);
+            var renderDev = context.ParseResult.GetValueForOption(renderDeviceOption);
+            var captureBuf = context.ParseResult.GetValueForOption(captureBufferOption);
+            var renderBuf = context.ParseResult.GetValueForOption(renderBufferOption);
+            var duration = context.ParseResult.GetValueForOption(durationOption);
 
-            context.ExitCode = Run(input, output, model, mode, highPass, format, device, modelPath, logLevel);
+            context.ExitCode = Run(input, output, model, mode, highPass, format, device,
+                modelPath, logLevel, ola, lookAhead, snrCsv, dfnMode,
+                captureDev, renderDev, captureBuf, renderBuf, duration);
         });
 
         return await root.InvokeAsync(args);
@@ -78,7 +136,10 @@ static class Program
 
     static int Run(
         string? input, string? output, string model, string mode,
-        float highPass, string format, int device, string? modelPath, string logLevel)
+        float highPass, string format, int device, string? modelPath, string logLevel,
+        string ola, bool lookAhead, string? snrCsv, string dfnMode = "full",
+        int captureDevice = 0, int renderDevice = 0, int captureBufferMs = 10, int renderBufferMs = 10,
+        int durationSec = 0)
     {
         using var loggerFactory = LoggerFactory.Create(b =>
         {
@@ -93,6 +154,13 @@ static class Program
             mode = mode.ToLowerInvariant();
             model = model.ToLowerInvariant();
             format = format.ToLowerInvariant();
+            ola = ola.ToLowerInvariant();
+
+            if (mode == "realtime")
+            {
+                return RunRealtime(model, modelPath, dfnMode, lookAhead,
+                    captureDevice, renderDevice, captureBufferMs, renderBufferMs, durationSec, logger);
+            }
 
             if (mode == "offline")
             {
@@ -111,7 +179,13 @@ static class Program
             IDenoiser denoiser;
             try
             {
-                denoiser = DenoiserFactory.Create(model, modelPath);
+                if (dfnMode.Equals("mask-only", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Error.WriteLine(
+                        "WARNING: --dfn-mode mask-only is a diagnostic setting. " +
+                        "Output is the ERB mask without the deep filter and is not production quality.");
+                }
+                denoiser = DenoiserFactory.Create(model, modelPath, dfnMode: dfnMode);
             }
             catch (Exception ex) when (ex is FileNotFoundException or InvalidOperationException or DllNotFoundException)
             {
@@ -119,8 +193,31 @@ static class Program
                 return 2;
             }
 
-            logger.LogInformation("Model: {Name}, FrameSize: {Fs}, HighPass: {Hp} Hz",
-                denoiser.Name, denoiser.FrameSize, highPass > 0 ? highPass : 0);
+            bool useOla = ola switch
+            {
+                "on" => true,
+                "off" => false,
+                _ => denoiser.RequiresOverlapAdd // auto
+            };
+            if (useOla)
+            {
+                if (!denoiser.RequiresOverlapAdd && ola == "on")
+                {
+                    // Explicit --ola on against a self-synthesizing model is a category error.
+                    Console.Error.WriteLine(
+                        $"Error: {denoiser.Name} handles its own STFT/ISTFT synthesis; " +
+                        "do not wrap it in external OLA. Use --ola auto or --ola off.");
+                    return 2;
+                }
+                if (denoiser.RequiresOverlapAdd)
+                {
+                    denoiser = new OverlapAddAdapter(denoiser);
+                    logger.LogInformation("Overlap-add enabled");
+                }
+            }
+
+            logger.LogInformation("Model: {Name}, FrameSize: {Fs}, HighPass: {Hp} Hz, LookAhead: {La}",
+                denoiser.Name, denoiser.FrameSize, highPass > 0 ? highPass : 0, lookAhead);
 
             IAudioSource source;
             IAudioSink sink;
@@ -144,11 +241,21 @@ static class Program
                 sink = new WavFileSink(output!);
             }
 
+            var snr = new SnrEstimator();
+            if (!string.IsNullOrWhiteSpace(snrCsv))
+            {
+                sink = new SnrCsvSink(sink, snrCsv, sampleRate: 48000, snr: snr);
+                logger.LogInformation("SNR CSV sidecar: {Path}", snrCsv);
+            }
+
+            var limiter = new SoftLimiter(lookAhead: lookAhead, releaseMs: 50f);
             bool enableHp = highPass > 0;
             using var pipeline = new DenoiserPipeline(
                 source, denoiser, sink,
                 highPassHz: enableHp ? highPass : 90f,
                 enableHighPass: enableHp,
+                limiter: limiter,
+                snr: snr,
                 logger: logger);
 
             var (samples, elapsed) = pipeline.Run();
@@ -167,5 +274,80 @@ static class Program
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
         }
+    static int RunRealtime(
+        string model, string? modelPath, string dfnMode, bool lookAhead,
+        int captureDevice, int renderDevice, int captureBufferMs, int renderBufferMs,
+        int durationSec, Microsoft.Extensions.Logging.ILogger logger)
+    {
+        if (!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                System.Runtime.InteropServices.OSPlatform.Windows))
+        {
+            Console.Error.WriteLine("Error: --mode realtime requires Windows (WASAPI).");
+            return 2;
+        }
+
+        IDenoiser denoiser;
+        try
+        {
+            if (dfnMode.Equals("mask-only", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.Error.WriteLine(
+                    "WARNING: --dfn-mode mask-only is a diagnostic setting.");
+            }
+            denoiser = DenoiserFactory.Create(model, modelPath, dfnMode: dfnMode);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error loading model '{model}': {ex.Message}");
+            return 2;
+        }
+
+        // RNNoise/DFN algorithmic delay estimate
+        int algorithmicMs = model.Contains("deepfilter") ? 40 : (model.Contains("rnnoise") ? 10 : 0);
+        var budget = new LatencyBudget(captureBufferMs, algorithmicMs, renderBufferMs);
+        Console.WriteLine($"[realtime] model={model} lookahead={lookAhead}");
+        Console.WriteLine($"[realtime] budget: {budget.Describe()}");
+        if (budget.TotalMs > 60)
+            Console.WriteLine("[realtime] WARNING: budget exceeds 60 ms signed target — revisit model/buffers.");
+
+        SoftLimiter? limiter = lookAhead
+            ? new SoftLimiter(lookAhead: true, lookAheadMs: 5f, releaseMs: 50f)
+            : new SoftLimiter(lookAhead: false);
+
+        try
+        {
+            using var capture = new WasapiCaptureDevice(captureDevice, captureBufferMs);
+            using var render = new WasapiRenderDevice(renderDevice, renderBufferMs);
+            using var pipeline = new RealtimePipeline(capture, render, denoiser, budget, limiter);
+
+            using var exit = new ManualResetEventSlim(false);
+            Console.CancelKeyPress += (_, e) => { e.Cancel = true; exit.Set(); };
+
+            pipeline.Start();
+            if (durationSec > 0)
+            {
+                if (!exit.Wait(TimeSpan.FromSeconds(durationSec)))
+                    logger.LogInformation("Duration elapsed.");
+            }
+            else
+            {
+                Console.WriteLine("[realtime] running — Ctrl+C to stop");
+                exit.Wait();
+            }
+            pipeline.Stop();
+            return 0;
+        }
+        catch (PlatformNotSupportedException ex)
+        {
+            Console.Error.WriteLine($"Error: {ex.Message}");
+            return 2;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Realtime failed: {ex.Message}");
+            return 3;
+        }
+    }
+
     }
 }
