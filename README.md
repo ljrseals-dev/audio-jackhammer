@@ -1,4 +1,9 @@
-#Audio Jackhammer 
+Copyright © 2026 Lewis James Seals Jr. All rights reserved.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT.
+# Audio Jackhammer 
 ## Environmental Denoiser for Construction-Site Audio
 
 Standalone .NET 8 application that ingests compressed audio, applies speech / environmental denoising tuned for construction-site noise (jackhammers, rock drills, machinery rumble, broadband traffic), and writes cleaned audio or routes it to a playback device.
