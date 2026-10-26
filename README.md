@@ -1,4 +1,5 @@
-# Environmental Denoiser for Construction-Site Audio
+#Audio Jackhammer 
+## Environmental Denoiser for Construction-Site Audio
 
 Standalone .NET 8 application that ingests compressed audio, applies speech / environmental denoising tuned for construction-site noise (jackhammers, rock drills, machinery rumble, broadband traffic), and writes cleaned audio or routes it to a playback device.
 
